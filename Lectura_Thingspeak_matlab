@@ -1,0 +1,38 @@
+%ID y API_KEY del canal 1
+readChannelID1 = 701302;
+readAPIKey1 = 'RP89NQX4F1BKQP6E';
+
+%ID y API_KEY del canal 2
+readChannelID2 = 701303;
+readAPIKey2 = 'LL6LSD0SYPXOVPBK';
+
+%% Read Data %%
+%Lectura de datos del canal 1
+NumValores = 40;
+Temperatura1 = thingSpeakRead(readChannelID1, 'ReadKey', readAPIKey1,'Fields',1,'NumPoints',NumValores);
+Humedad1 = thingSpeakRead(readChannelID1, 'ReadKey', readAPIKey1,'Fields',2,'NumPoints',NumValores);
+
+%Lectura de datos del canal 2
+Temperatura2 = thingSpeakRead(readChannelID2, 'ReadKey', readAPIKey2,'Fields',1,'NumPoints',NumValores);
+Humedad2 = thingSpeakRead(readChannelID2, 'ReadKey', readAPIKey2,'Fields',2,'NumPoints',NumValores);
+%% Adjust Data %%
+Temperatura = zeros(NumValores*2,0);
+Humedad = zeros(NumValores*2,0);
+
+%Agrupacion de datos de temperatura 
+Temperatura(1:2:NumValores*2-1) = Temperatura1;
+Temperatura(2:2:NumValores*2) = Temperatura2;
+
+%Agrupacion de datos de humedad
+Humedad(1:2:NumValores*2-1) = Humedad1;
+Humedad(2:2:NumValores*2) = Humedad2;
+
+Temperatura=Temperatura';
+Humedad=Humedad';
+%Cada valor de temperatura y humedad se tomo con un periodo de 10 segundos
+Time = zeros(NumValores*2,1);
+for i = 1:NumValores*2
+    Time(i)=i*10;
+end
+Temperatura = [Time Temperatura];
+Humedad = [Time Humedad];
