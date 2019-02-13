@@ -1,0 +1,141 @@
+#importacion de las librerias necesarias para el correcto funcionamiento
+
+import httplib
+import urllib
+import json
+import Adafruit_DHT
+import time
+
+
+# Declaracion de variables globales
+USER_API_KEY='xxxxxxxxxxxx'
+flag=0
+
+
+
+# establecimiento de canal de comunicacion HTTP
+server = 'api.thingspeak.com'
+connTCP = httplib.HTTPSConnection(server)
+print ("Estableciendo conexion TCP..."),
+connTCP.connect()  # establecer conexion
+print("Conexion TCP establecida!")
+
+# Obtencion informacion canales existentes en perfil
+# La idea es obtener la informacion de los canales existentes en una cuenta para posteriormente borrarlos
+# https://es.mathworks.com/help/thingspeak/listyourchannels.html
+
+# Creacion de canales
+print("\tCreando canal")
+method = "POST"
+relative_uri = "/channels.json"
+headers = {'Host': server,
+           'Content-Type': 'application/x-www-form-urlencoded'}
+
+payload = {'api_key': USER_API_KEY,
+'name': 'Canal1',
+'field1': 'Temp',
+'field2': 'Hum',
+        }
+payload_encoded = urllib.urlencode(payload)
+headers['Content-Length'] = len(payload_encoded)
+print("\tEnviando peticion de creacion de canal...")
+connTCP.request(method, relative_uri, headers=headers, body=payload_encoded)
+print("\tRecibiendo respuesta")
+respuesta = connTCP.getresponse()
+status = respuesta.status
+print("\tStatus: " + str(status))
+contenido = respuesta.read()
+contenido_json = json.loads(contenido)
+CHANNEL_1_ID = contenido_json['id']
+WRITE_API_KEY_1 = contenido_json['api_keys'][0]['api_key']
+print ("\t" + str(WRITE_API_KEY_1))
+time.sleep(5)
+
+payload = {'api_key': USER_API_KEY,
+                   'name': 'Canal2',
+                   'field1': 'Temp',
+                   'field2': 'Hum',
+                   }
+payload_encoded = urllib.urlencode(payload)
+headers['Content-Length'] = len(payload_encoded)
+print("\tEnviando peticion de creacion de canal...")
+connTCP.request(method, relative_uri, headers=headers, body=payload_encoded)
+print("\tRecibiendo respuesta")
+respuesta = connTCP.getresponse()
+status = respuesta.status
+print("\tStatus: " + str(status))
+
+contenido = respuesta.read()
+    # Copiamos contenido en formato json a un dict de python
+contenido_json = json.loads(contenido)
+CHANNEL_2_ID = contenido_json['id']
+WRITE_API_KEY_2 = contenido_json['api_keys'][0]['api_key']
+print ("\t" + str(WRITE_API_KEY_2))
+time.sleep(5)
+# Programa principal
+# Pasos:
+# 1. Lectura de datos desde el sensor
+# 2. Creacion de la peticion de envio y codificacion json dependiendo de variable flag
+# 3. Envio de datos a cada canal dependiendo de variable flag
+try:
+    sensor = Adafruit_DHT.AM2302
+    pin = '4'
+    while(True):
+        Humedad,Temperatura = Adafruit_DHT.read_retry(sensor,pin,delay_seconds = 0)
+        print('Temperatura = [0:0.1f]*  Humedad=[1:0.1f]%'.format(Temperatura,Humedad))
+        if flag ==0:
+            method = "POST"
+            relative_uri = "/update.json"
+            # la llave significa diccionario y tiene la estructura nombre : valor
+            headers = {'Host': server,
+                   'Content-Type': 'application/x-www-form-urlencoded'}
+            payload = {'api_key': WRITE_API_KEY_1,
+                   'field1': Temperatura,
+                   'field2': Humedad}
+            # codificamos los datos a enviar en formato form.
+            payload_encoded = urllib.urlencode(payload)
+            headers['Content-Length'] = len(payload_encoded)
+
+            print("Enviando peticion HTTP..."),
+            connTCP.request(method, relative_uri, headers=headers, body=payload_encoded)
+            print("Peticion enviada")
+
+            print("Esperando respuesta HTTP...")
+            respuesta = connTCP.getresponse()
+            status = respuesta.status
+            print(str(status))
+            print(respuesta.read())
+
+            flag =1
+            time.sleep(10)
+        print()
+        if flag ==1:
+            method = "POST"
+            relative_uri = "/update.json"
+            # la llave significa diccionario y tiene la estructura nombre : valor
+            headers = {'Host': server,
+                  'Content-Type': 'application/x-www-form-urlencoded'}
+            payload = {'api_key': WRITE_API_KEY_2,
+                  'field1': Temperatura,
+                  'field2': Humedad}
+            # codificamos los datos a enviar en formato form.
+            payload_encoded = urllib.urlencode(payload)
+            headers['Content-Length'] = len(payload_encoded)
+
+            print("Enviando peticion HTTP..."),
+            connTCP.request(method, relative_uri, headers=headers, body=payload_encoded)
+            print("Peticion enviada")
+
+            print("Esperando respuesta HTTP...")
+            respuesta = connTCP.getresponse()
+            status = respuesta.status
+            print(str(status))
+            print(respuesta.read())
+
+            flag =0
+            time.sleep(10)
+        print()
+except KeyboardInterrupt:
+        connTCP.close()
+        print("Se ha pulsado Ctrl+C. Saliendo del programa...")
+
